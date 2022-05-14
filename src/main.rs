@@ -3,40 +3,19 @@ mod aggregate;
 
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{ BufReader };
 use std::collections::{HashMap};
-use serde_json::{Result, Value, };
 
+pub use crate::aggregate::{ LogRecord, TableRow, Index, Field };
 
-pub use crate::aggregate::{ LogRecord, TableRow, Field };
-
-
-fn show(r :&LogRecord) {
-    let mut s = String::new();
-    for (key, value) in &r.values {
-        let key = key.as_str();
-        let v = match value {
-            None => "None",
-            Some(v) => v.as_str()
-        };
-        s += format!("{} : {}, ", key ,v).as_str();
-    }
-    println!("{}", s);
-}
-
-enum ValueType {
-    Integer,
-    Float,
-    Second,
-    MilleSecond,
-}
 
 fn main() {
 
     let args: Vec<_> = env::args().collect();
 
+    // とりあえず固定のパラメータ
     let filename = &args[1];
-
+    let index = Index::new("index", &["httpRequest".to_owned(), "requestMethod".to_owned()]);
     let fields :Vec<Field> = vec![
         Field::new("latency", &["httpRequest".to_owned(), "latency".to_owned()]),
         Field::new("method", &["httpRequest".to_owned(), "requestMethod".to_owned()]),
@@ -49,7 +28,8 @@ fn main() {
 
     // 一行ずつ読み込んで集計していく
     loop {
-        let record = parse_line(&mut reader, &fields);
+        let record = LogRecord::parse(&mut reader, &index, &fields);
+
         if let Ok(r) = record {
             let key = r.key.to_string();
 
@@ -90,29 +70,5 @@ fn main() {
         }
         println!("{}", &row_str);
     }
-}
-
-
-fn parse_line(reader: &mut BufReader<File>, fields :&[Field]) -> Result<LogRecord> {
-    let mut buf = String::new();
-    reader.read_line(&mut buf).expect("error");
-
-    let v: Value = serde_json::from_str(&buf)?;
-    let mut record: LogRecord = LogRecord::new("this is test");
-
-    for f in fields {
-        let value = get_value(&v, &f.accessor, 0);
-        record.set(f.name.as_str(), value);
-    }
-    Ok(record)
-}
-
-fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
-    if accessor.len() == pos {
-        return v.as_str().map(String::from);
-    }
-    let key = &accessor[pos];
-    let nxt = &v[key];
-    get_value(nxt, accessor, pos+1)
 }
 

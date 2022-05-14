@@ -1,5 +1,8 @@
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::collections::{ HashMap };
+use serde_json::{Result, Value, };
 
 #[derive(Clone)]
 pub struct OpCount {
@@ -63,7 +66,6 @@ impl TableRow {
 pub struct Field {
     pub name: String,
     pub accessor: Vec<String>,
-    pub op: OpCount,
 }
 
 impl Field {
@@ -71,11 +73,25 @@ impl Field {
         Self {
             name: name.to_owned(),
             accessor: accessor.to_vec(),
-            op: OpCount::new() 
             // 型のタイプ
         }
     }    
 }
+
+pub struct Index {
+    pub name: String,
+    pub accessor: Vec<String>
+}
+
+impl Index {
+    pub fn new(name: &str, accessor: &[String]) -> Self {
+        Self {
+            name: name.to_owned(),
+            accessor: accessor.to_vec(),
+        }
+    }    
+}
+
 
 
 pub struct LogRecord {
@@ -91,7 +107,43 @@ impl LogRecord {
         }
     }
 
+    pub fn parse(reader :&mut BufReader<File>, index: &Index, fields :&[Field]) -> Result<LogRecord> {
+        // read line
+        let mut buf = String::new();
+        reader.read_line(&mut buf).expect("error");
+        let v: Value = serde_json::from_str(&buf)?;
+
+        // Read key and init log record.
+        let key = match get_value(&v, &index.accessor, 0) {
+            Some(x) => x,
+            None => "undefined".to_owned()
+        };
+        let mut record = LogRecord {
+            key, values: HashMap::new()
+        };
+
+        // Read data
+        for f in fields {
+            let value = get_value(&v, &f.accessor, 0);
+            record.set(f.name.as_str(), value);
+        }
+        Ok(record)
+    }
+
     pub fn set(&mut self, key: &str, value: Option<String>) {
         self.values.insert(key.to_string(), value);
     }
+
 }
+
+fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
+    if accessor.len() == pos {
+        return v.as_str().map(String::from);
+    }
+    let key = &accessor[pos];
+    let nxt = &v[key];
+    get_value(nxt, accessor, pos+1)
+}
+
+
+
