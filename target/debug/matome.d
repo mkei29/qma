@@ -1,1 +1,1 @@
-/Users/keisuke/dev/src/github.com/toritoritori29/matome/target/debug/matome: /Users/keisuke/dev/src/github.com/toritoritori29/matome/src/main.rs
+/Users/keisuke/dev/src/github.com/toritoritori29/matome/target/debug/matome: /Users/keisuke/dev/src/github.com/toritoritori29/matome/src/aggregate.rs /Users/keisuke/dev/src/github.com/toritoritori29/matome/src/main.rs
