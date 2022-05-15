@@ -1,5 +1,6 @@
 
 mod aggregate;
+mod config;
 
 use std::env;
 use std::fs::File;
@@ -7,6 +8,7 @@ use std::io::{ BufReader };
 use std::collections::{HashMap};
 
 pub use crate::aggregate::{ LogRecord, TableRow, Index, Field };
+pub use crate::config:: { Config };
 
 
 fn main() {
