@@ -1,7 +1,16 @@
 
 
-pub trait Operation {
+enum OpType {
+    COUNT,
+    COUNT_RATE,
+}
 
+enum OpValue {
+    Integer(u32)
+}
+pub trait Operation {
+    pub fn update(&mut self); 
+    pub fn value(&self) -> OpValue;
 }
 
 pub struct OpCount {
@@ -14,12 +23,14 @@ impl OpCount {
             count: 0
         }
     }
+}
 
-    pub fn update(&mut self) {
+impl Operation for OpCount {
+    fn update(&mut self) {
         self.count += 1;
     }
 
-    pub const fn value(&mut self) -> u32{
-        self.count
+    const fn value(&mut self) -> OpValue{
+        OpValue(self.count)
     }
 }

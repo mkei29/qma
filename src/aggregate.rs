@@ -1,5 +1,6 @@
 
 use std::fs::File;
+use std::fmt;
 use std::io::{BufRead, BufReader};
 use std::collections::{ HashMap };
 use serde_json::{Result, Value, };
@@ -16,8 +17,10 @@ impl OpCount {
         }
     }
 
-    pub fn update(&mut self) {
-        self.count += 1;
+    pub fn update(&mut self, v :&LogValue) {
+        if let LogValue::String(s) = v {
+            self.count += 1;
+        }
     }
 
     pub fn value(&self) -> u32{
@@ -40,11 +43,13 @@ impl TableRow {
 
     pub fn update(&mut self, record: &LogRecord, fields: &[Field]) {
         for f in fields {
+            // Insert field if not exist.
             self.values.entry(f.name.clone())
-                .or_insert(OpCount::new());
+                .or_insert_with(OpCount::new);
 
+            let v = record.get(&f.name);
             if let Some(op) = self.values.get_mut(&f.name) {
-                op.update();
+                op.update(&v);
             }
         }
     }
@@ -96,7 +101,7 @@ impl Index {
 
 pub struct LogRecord {
     pub key: String,
-    pub values: HashMap<String, Option<String>>
+    pub values: HashMap<String, LogValue>
 }
 
 impl LogRecord {
@@ -125,15 +130,44 @@ impl LogRecord {
         // Read data
         for f in fields {
             let value = get_value(&v, &f.accessor, 0);
-            record.set(f.name.as_str(), value);
+            if let Some(v) = value {
+                record.set(f.name.as_str(), v);
+            }
         }
         Ok(record)
     }
 
-    pub fn set(&mut self, key: &str, value: Option<String>) {
-        self.values.insert(key.to_string(), value);
+    pub fn set(&mut self, key: &str, value: String) {
+        let v = parse_value("string", &value);
+        self.values.insert(key.to_string(), v);
     }
 
+    pub fn get(&self, key :&str) -> LogValue {
+        if let Some(x) = self.values.get(key) {
+            println!("{}", x);
+            x.clone()
+        } else {
+            LogValue::None
+        }
+    }
+
+}
+
+#[derive(Clone, Debug)]
+pub enum LogValue {
+    String(String),
+    Integer(u32),
+    Float(i32),
+    None,
+}
+
+impl fmt::Display for LogValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogValue::String(s) => write!(f, "String({})", s ),
+            _ => write!(f, "")
+        }
+    }
 }
 
 fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
@@ -143,6 +177,18 @@ fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
     let key = &accessor[pos];
     let nxt = &v[key];
     get_value(nxt, accessor, pos+1)
+}
+
+fn parse_value(typ: &str, s :&str) -> LogValue {
+    match typ {
+        "string" => {
+            LogValue::String(s.to_string())
+        },
+        "integer" => {
+            LogValue::None
+        },
+        _ => { LogValue::None }
+    }
 }
 
 
