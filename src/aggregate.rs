@@ -157,7 +157,8 @@ impl LogRecord {
 pub enum LogValue {
     String(String),
     Integer(u32),
-    Float(i32),
+    Float(f64),
+    Second(f64),
     None,
 }
 
@@ -185,11 +186,83 @@ fn parse_value(typ: &str, s :&str) -> LogValue {
             LogValue::String(s.to_string())
         },
         "integer" => {
-            LogValue::None
+            if let Ok(num) = s.parse::<u32>() {
+                LogValue::Integer(num)
+            } else {
+                LogValue::None
+            }
+        },
+        "float" => {
+            if let Ok(num) = s.parse::<f64>() {
+                LogValue::Float(num)
+            } else {
+                LogValue::None
+            }            
+        },
+        "second" => {
+            let replace_and_float = |inp :&str, pattern: &str| {
+                let raw = inp.replace(pattern, "");
+                if let Ok(num) = raw.parse::<f64>() {
+                    LogValue::Float(num)
+                } else {
+                    LogValue::None
+                }     
+            };
+            if s.ends_with('s') {
+                replace_and_float(s, "s")
+            } else if s.ends_with("sec") {
+                replace_and_float(s, "sec")
+            } else {
+                LogValue::None
+            }
         },
         _ => { LogValue::None }
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn check_parse_value() {
+        // Check string case.
+        let v = parse_value("string", "test_string");
+        if let LogValue::String(s) = v {
+            assert_eq!(s, "test_string");
+        } else {
+            unreachable!();
+        }
+
+        // Check integer case.
+        let v = parse_value("integer", "123");
+        if let LogValue::Integer(n) = v {
+            assert_eq!(n, 123);
+        } else {
+            unreachable!();
+        }
+        let v = parse_value("integer", "abc");
+        assert!(matches!(v, LogValue::None));
+
+        // Check float case.
+        let v = parse_value("float", "123.4");
+        if let LogValue::Float(n) = v {
+            assert_eq!(n, 123.4);
+        } else {
+            unreachable!();
+        }
+        let v = parse_value("integer", "abc");
+        assert!(matches!(v, LogValue::None));
+
+        // Check second case.
+        let v = parse_value("second", "123.4s");
+        if let LogValue::Float(n) = v {
+            assert_eq!(n, 123.4);
+        } else {
+            unreachable!();
+        }
+        let v = parse_value("second", "123.4h");
+        assert!(matches!(v, LogValue::None));
+    }
+}
 
