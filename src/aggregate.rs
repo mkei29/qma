@@ -1,9 +1,6 @@
 
-use std::fs::File;
-use std::fmt;
-use std::io::{BufRead, BufReader};
+use crate::log_record::{ Accessor, LogRecord, LogValue };
 use std::collections::{ HashMap };
-use serde_json::{Result, Value, };
 
 #[derive(Clone)]
 pub struct OpCount {
@@ -18,9 +15,10 @@ impl OpCount {
     }
 
     pub fn update(&mut self, v :&LogValue) {
-        if let LogValue::String(s) = v {
-            self.count += 1;
-        }
+        match v {
+            LogValue::None => {},
+            _ => { self.count += 1 }
+        };
     }
 
     pub fn value(&self) -> u32{
@@ -44,11 +42,11 @@ impl TableRow {
     pub fn update(&mut self, record: &LogRecord, fields: &[Field]) {
         for f in fields {
             // Insert field if not exist.
-            self.values.entry(f.name.clone())
+            self.values.entry(f.name().to_string())
                 .or_insert_with(OpCount::new);
 
-            let v = record.get(&f.name);
-            if let Some(op) = self.values.get_mut(&f.name) {
+            let v = record.get(f.name());
+            if let Some(op) = self.values.get_mut(f.name()) {
                 op.update(&v);
             }
         }
@@ -59,7 +57,7 @@ impl TableRow {
     pub fn get_row(&self, fields: &[Field]) -> Vec<Option<u32>> {
         let mut result: Vec<Option<u32>> = Vec::new();
         for f in fields {
-            let v = self.values.get(&f.name).map(|x| x.value());
+            let v = self.values.get(f.name()).map(|x| x.value());
             result.push(v);
         }
         result
@@ -67,202 +65,59 @@ impl TableRow {
 }
 
 
+pub struct TableDef {
+    pub index: Index,
+    pub fields: Vec<Field>
+}
+
+impl TableDef {
+    pub fn new(index: Index, fields: Vec<Field>) -> Self {
+        Self { index, fields }
+    }
+
+    pub fn field_accessor(&self) -> Vec<&Accessor> {
+        let mut result :Vec<&Accessor> = Vec::new();
+        for f in self.fields.iter() {
+            result.push(&f.accessor);
+        } 
+        result
+    }
+
+    pub fn key_accessor(&self) -> &Accessor {
+        &self.index.accessor
+    }
+
+    pub fn field_num(&self) -> usize {
+        self.fields.len()
+    }
+}
+
 #[derive(Clone)]
 pub struct Field {
-    pub name: String,
-    pub accessor: Vec<String>,
+    pub accessor: Accessor
 }
 
 impl Field {
-    pub fn new(name: &str, accessor: &[String]) -> Self {
-        Self {
-            name: name.to_owned(),
-            accessor: accessor.to_vec(),
-            // 型のタイプ
-        }
-    }    
+    pub fn new(accessor: Accessor) -> Self {
+        Self { accessor }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.accessor.name
+    }
 }
 
 pub struct Index {
-    pub name: String,
-    pub accessor: Vec<String>
+    pub accessor: Accessor
 }
 
 impl Index {
-    pub fn new(name: &str, accessor: &[String]) -> Self {
-        Self {
-            name: name.to_owned(),
-            accessor: accessor.to_vec(),
-        }
+    pub fn new(accessor: Accessor) -> Self {
+        Self { accessor }
     }    
-}
 
-
-
-pub struct LogRecord {
-    pub key: String,
-    pub values: HashMap<String, LogValue>
-}
-
-impl LogRecord {
-    pub fn new (key: &str) -> Self {
-        Self {
-            key: String::from(key),
-            values: HashMap::new()
-        }
-    }
-
-    pub fn parse(reader :&mut BufReader<File>, index: &Index, fields :&[Field]) -> Result<LogRecord> {
-        // read line
-        let mut buf = String::new();
-        reader.read_line(&mut buf).expect("error");
-        let v: Value = serde_json::from_str(&buf)?;
-
-        // Read key and init log record.
-        let key = match get_value(&v, &index.accessor, 0) {
-            Some(x) => x,
-            None => "undefined".to_owned()
-        };
-        let mut record = LogRecord {
-            key, values: HashMap::new()
-        };
-
-        // Read data
-        for f in fields {
-            let value = get_value(&v, &f.accessor, 0);
-            if let Some(v) = value {
-                record.set(f.name.as_str(), v);
-            }
-        }
-        Ok(record)
-    }
-
-    pub fn set(&mut self, key: &str, value: String) {
-        let v = parse_value("string", &value);
-        self.values.insert(key.to_string(), v);
-    }
-
-    pub fn get(&self, key :&str) -> LogValue {
-        if let Some(x) = self.values.get(key) {
-            println!("{}", x);
-            x.clone()
-        } else {
-            LogValue::None
-        }
-    }
-
-}
-
-#[derive(Clone, Debug)]
-pub enum LogValue {
-    String(String),
-    Integer(u32),
-    Float(f64),
-    Second(f64),
-    None,
-}
-
-impl fmt::Display for LogValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LogValue::String(s) => write!(f, "String({})", s ),
-            _ => write!(f, "")
-        }
-    }
-}
-
-fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
-    if accessor.len() == pos {
-        return v.as_str().map(String::from);
-    }
-    let key = &accessor[pos];
-    let nxt = &v[key];
-    get_value(nxt, accessor, pos+1)
-}
-
-fn parse_value(typ: &str, s :&str) -> LogValue {
-    match typ {
-        "string" => {
-            LogValue::String(s.to_string())
-        },
-        "integer" => {
-            if let Ok(num) = s.parse::<u32>() {
-                LogValue::Integer(num)
-            } else {
-                LogValue::None
-            }
-        },
-        "float" => {
-            if let Ok(num) = s.parse::<f64>() {
-                LogValue::Float(num)
-            } else {
-                LogValue::None
-            }            
-        },
-        "second" => {
-            let replace_and_float = |inp :&str, pattern: &str| {
-                let raw = inp.replace(pattern, "");
-                if let Ok(num) = raw.parse::<f64>() {
-                    LogValue::Float(num)
-                } else {
-                    LogValue::None
-                }     
-            };
-            if s.ends_with('s') {
-                replace_and_float(s, "s")
-            } else if s.ends_with("sec") {
-                replace_and_float(s, "sec")
-            } else {
-                LogValue::None
-            }
-        },
-        _ => { LogValue::None }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn check_parse_value() {
-        // Check string case.
-        let v = parse_value("string", "test_string");
-        if let LogValue::String(s) = v {
-            assert_eq!(s, "test_string");
-        } else {
-            unreachable!();
-        }
-
-        // Check integer case.
-        let v = parse_value("integer", "123");
-        if let LogValue::Integer(n) = v {
-            assert_eq!(n, 123);
-        } else {
-            unreachable!();
-        }
-        let v = parse_value("integer", "abc");
-        assert!(matches!(v, LogValue::None));
-
-        // Check float case.
-        let v = parse_value("float", "123.4");
-        if let LogValue::Float(n) = v {
-            assert_eq!(n, 123.4);
-        } else {
-            unreachable!();
-        }
-        let v = parse_value("integer", "abc");
-        assert!(matches!(v, LogValue::None));
-
-        // Check second case.
-        let v = parse_value("second", "123.4s");
-        if let LogValue::Float(n) = v {
-            assert_eq!(n, 123.4);
-        } else {
-            unreachable!();
-        }
-        let v = parse_value("second", "123.4h");
-        assert!(matches!(v, LogValue::None));
+    pub fn name(&self) -> &str {
+        &self.accessor.name
     }
 }
 
