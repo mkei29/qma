@@ -98,6 +98,28 @@ impl fmt::Display for LogValue {
     }
 }
 
+impl LogValue {
+    pub fn as_string(&self) -> String {
+        match self {
+            LogValue::String(x) => {
+                x.clone()
+            },
+            LogValue::Integer(x) => {
+                x.to_string()
+            },
+            LogValue::Float(x) => {
+                x.to_string()
+            },
+            LogValue::Second(x) => {
+                x.to_string()
+            },
+            LogValue::None => {
+                String::from("None")
+            }
+        }
+    }
+}
+
 fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
     if accessor.len() == pos {
         return v.as_str().map(String::from);

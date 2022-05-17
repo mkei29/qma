@@ -1,35 +1,12 @@
 
 use crate::log_record::{ Accessor, LogRecord, LogValue };
+use crate::operation::{ Operation, OpCount, OpType };
 use std::collections::{ HashMap };
-
-#[derive(Clone)]
-pub struct OpCount {
-    count: u32
-}
-
-impl OpCount {
-    pub fn new() -> Self{
-        Self {
-            count: 0
-        }
-    }
-
-    pub fn update(&mut self, v :&LogValue) {
-        match v {
-            LogValue::None => {},
-            _ => { self.count += 1 }
-        };
-    }
-
-    pub fn value(&self) -> u32{
-        self.count
-    }
-}
 
 
 pub struct TableRow {
     // row name -> value
-    values: HashMap<String, OpCount>,
+    values: HashMap<String, Box<dyn Operation>>,
 }
 
 impl TableRow {
@@ -43,7 +20,7 @@ impl TableRow {
         for f in fields {
             // Insert field if not exist.
             self.values.entry(f.name().to_string())
-                .or_insert_with(OpCount::new);
+                .or_insert(Box::new(OpCount::new()));
 
             let v = record.get(f.name());
             if let Some(op) = self.values.get_mut(f.name()) {
@@ -54,11 +31,15 @@ impl TableRow {
 
     ///
     /// 
-    pub fn get_row(&self, fields: &[Field]) -> Vec<Option<u32>> {
-        let mut result: Vec<Option<u32>> = Vec::new();
+    pub fn get_row(&self, fields: &[Field]) -> Vec<LogValue> {
+        let mut result: Vec<LogValue> = Vec::new();
         for f in fields {
             let v = self.values.get(f.name()).map(|x| x.value());
-            result.push(v);
+            if let Some(x) = v {
+                result.push(x);
+            } else {
+                result.push(LogValue::None);
+            }
         }
         result
     }
@@ -94,12 +75,13 @@ impl TableDef {
 
 #[derive(Clone)]
 pub struct Field {
-    pub accessor: Accessor
+    pub accessor: Accessor,
+    pub op_type: OpType
 }
 
 impl Field {
     pub fn new(accessor: Accessor) -> Self {
-        Self { accessor }
+        Self { accessor, op_type: OpType::COUNT }
     }
 
     pub fn name(&self) -> &str {

@@ -2,6 +2,7 @@
 mod aggregate;
 mod config;
 mod log_record;
+mod operation;
 
 use std::env;
 use std::fs::File;
@@ -64,11 +65,9 @@ fn main() {
         row_str += ",";
 
         for (i, v) in row.get_row(&def.fields).iter().enumerate() {
-            if let Some(x) = v {
-                row_str += &x.to_string();
-            } else {
-                row_str += "";
-            }
+
+            let s  = v.as_string();
+            row_str += &s;
             if i != def.field_num() {
                 row_str += ",";
             }
@@ -77,4 +76,3 @@ fn main() {
         println!("{}", &row_str);
     }
 }
-
