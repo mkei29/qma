@@ -12,6 +12,7 @@ use std::collections::{HashMap};
 pub use crate::aggregate::{ TableRow, TableDef, Index, Field };
 pub use crate::log_record::{ LogRecord, Accessor };
 pub use crate::config:: { Config };
+pub use crate::operation::{OpType};
 
 
 fn main() {
@@ -22,8 +23,8 @@ fn main() {
     let filename = &args[1];
     let index = Index::new(Accessor::from_string("key", "httpRequest.requestMethod"));
     let fields :Vec<Field> = vec![
-        Field::new(Accessor::from_string("latency", "httpRequest.latency")),
-        Field::new(Accessor::from_string("method", "httpRequest.requestMethod"))
+        Field::new(Accessor::from_string("latency", "httpRequest.latency"), OpType::Average),
+        Field::new(Accessor::from_string("method", "httpRequest.requestMethod"), OpType::Count)
     ];
 
     let def = TableDef::new(index, fields);

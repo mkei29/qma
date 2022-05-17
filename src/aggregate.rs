@@ -1,6 +1,6 @@
 
 use crate::log_record::{ Accessor, LogRecord, LogValue };
-use crate::operation::{ Operation, OpCount, OpType };
+use crate::operation::{ Operation, OpCount, OpType, build_operation };
 use std::collections::{ HashMap };
 
 
@@ -20,7 +20,7 @@ impl TableRow {
         for f in fields {
             // Insert field if not exist.
             self.values.entry(f.name().to_string())
-                .or_insert(Box::new(OpCount::new()));
+                .or_insert(build_operation(&f.op_type));
 
             let v = record.get(f.name());
             if let Some(op) = self.values.get_mut(f.name()) {
@@ -80,8 +80,8 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(accessor: Accessor) -> Self {
-        Self { accessor, op_type: OpType::COUNT }
+    pub fn new(accessor: Accessor, op_type: OpType) -> Self {
+        Self { accessor, op_type }
     }
 
     pub fn name(&self) -> &str {
