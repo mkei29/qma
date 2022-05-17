@@ -87,3 +87,35 @@ impl OpAverage {
         Self { sum: 0., count: 0 }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    
+    #[test]
+    fn check_op_average() {
+        let mut op = OpAverage::new();
+        for n in 1..6 {
+            op.update(&LogValue::Float(n as f64));
+        }
+        if let LogValue::Float(x) = op.value() {
+            assert_eq!(x, 3.);
+        } else {
+            unreachable!();
+        }
+    }
+
+    #[test]
+    fn check_op_count() {
+        let mut op = OpCount::new();
+        for n in 1..6 {
+            op.update(&LogValue::Integer(n));
+        }
+        if let LogValue::Integer(x) = op.value() {
+            assert_eq!(x, 5);
+        } else {
+            unreachable!();
+        }
+    }
+}
