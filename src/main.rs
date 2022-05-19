@@ -12,7 +12,7 @@ use std::collections::{HashMap};
 
 pub use crate::aggregate::{ TableRow, TableDef, Index, Field };
 pub use crate::log_record::{ LogValueType, LogValue, LogRecord, Accessor };
-pub use crate::config:: { Config };
+pub use crate::config::qma_config:: { Config };
 pub use crate::operation::{OpType};
 
 
