@@ -1,6 +1,6 @@
 
 use crate::log_record::{ Accessor, LogRecord, LogValue };
-use crate::operation::{ Operation, OpCount, OpType, build_operation };
+use crate::operation::{ Operation, OpType, build_operation };
 use std::collections::{ HashMap };
 
 

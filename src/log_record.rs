@@ -10,11 +10,11 @@ pub struct Accessor {
     /// struct to describe json query.
     pub name: String,
     pub accessor: Vec<String>,
-    pub dtype: String
+    pub dtype: LogValueType
 }
 
 impl Accessor {
-    pub fn from_string(name: &str, accessor: &str) -> Self{
+    pub fn from_string(name: &str, accessor: &str, dtype: LogValueType) -> Self{
         let mut new_vec: Vec<String> = Vec::new();
         for s in accessor.split('.') {
             new_vec.push(s.to_string());
@@ -22,7 +22,7 @@ impl Accessor {
         Self {
             name: name.to_string(),
             accessor: new_vec,
-            dtype: String::from("string")
+            dtype
         }
     }
 }
@@ -59,14 +59,14 @@ impl LogRecord {
         for f in fields {
             let value = get_value(&v, &f.accessor, 0);
             if let Some(v) = value {
-                record.set(f.name.as_str(), v);
+                record.set(f.name.as_str(), v, &f.dtype);
             }
         }
         Ok(record)
     }
 
-    pub fn set(&mut self, key: &str, value: String) {
-        let v = parse_value("string", &value);
+    pub fn set(&mut self, key: &str, value: String, typ: &LogValueType) {
+        let v = parse_value(&typ, &value);
         self.values.insert(key.to_string(), v);
     }
 
@@ -79,6 +79,16 @@ impl LogRecord {
     }
 
 }
+
+#[derive(Clone)]
+pub enum LogValueType {
+    String,
+    Integer,
+    Float,
+    Second,
+    None,
+}
+
 
 #[derive(Clone, Debug)]
 pub enum LogValue {
@@ -100,7 +110,7 @@ impl fmt::Display for LogValue {
 
 impl LogValue {
     pub fn as_string(&self) -> String {
-        match self {
+        let s = match self {
             LogValue::String(x) => {
                 x.clone()
             },
@@ -108,15 +118,16 @@ impl LogValue {
                 x.to_string()
             },
             LogValue::Float(x) => {
-                x.to_string()
+                format!("{:.4}", x.to_string())
             },
             LogValue::Second(x) => {
-                x.to_string()
+                format!("{:.4}sec", x)
             },
             LogValue::None => {
                 String::from("None")
             }
-        }
+        };
+        s
     }
 }
 
@@ -129,38 +140,38 @@ fn get_value(v :&Value, accessor: &[String], pos: usize) -> Option<String>{
     get_value(nxt, accessor, pos+1)
 }
 
-fn parse_value(typ: &str, s :&str) -> LogValue {
+fn parse_value(typ: &LogValueType, s :&str) -> LogValue {
     match typ {
-        "string" => {
+        LogValueType::String => {
             LogValue::String(s.to_string())
         },
-        "integer" => {
+        LogValueType::Integer => {
             if let Ok(num) = s.parse::<u32>() {
                 LogValue::Integer(num)
             } else {
                 LogValue::None
             }
         },
-        "float" => {
+        LogValueType::Float => {
             if let Ok(num) = s.parse::<f64>() {
                 LogValue::Float(num)
             } else {
                 LogValue::None
             }            
         },
-        "second" => {
-            let replace_and_float = |inp :&str, pattern: &str| {
+        LogValueType::Second => {
+            let replace_and_second = |inp :&str, pattern: &str| {
                 let raw = inp.replace(pattern, "");
                 if let Ok(num) = raw.parse::<f64>() {
-                    LogValue::Float(num)
+                    LogValue::Second(num)
                 } else {
                     LogValue::None
                 }     
             };
             if s.ends_with('s') {
-                replace_and_float(s, "s")
+                replace_and_second(s, "s")
             } else if s.ends_with("sec") {
-                replace_and_float(s, "sec")
+                replace_and_second(s, "sec")
             } else {
                 LogValue::None
             }
@@ -176,7 +187,7 @@ mod tests {
     #[test]
     fn check_parse_value() {
         // Check string case.
-        let v = parse_value("string", "test_string");
+        let v = parse_value(&LogValueType::String, "test_string");
         if let LogValue::String(s) = v {
             assert_eq!(s, "test_string");
         } else {
@@ -184,33 +195,33 @@ mod tests {
         }
 
         // Check integer case.
-        let v = parse_value("integer", "123");
+        let v = parse_value(&LogValueType::Integer, "123");
         if let LogValue::Integer(n) = v {
             assert_eq!(n, 123);
         } else {
             unreachable!();
         }
-        let v = parse_value("integer", "abc");
+        let v = parse_value(&LogValueType::Integer, "abc");
         assert!(matches!(v, LogValue::None));
 
         // Check float case.
-        let v = parse_value("float", "123.4");
+        let v = parse_value(&LogValueType::Float, "123.4");
         if let LogValue::Float(n) = v {
             assert_eq!(n, 123.4);
         } else {
             unreachable!();
         }
-        let v = parse_value("integer", "abc");
+        let v = parse_value(&LogValueType::Float, "abc");
         assert!(matches!(v, LogValue::None));
 
         // Check second case.
-        let v = parse_value("second", "123.4s");
-        if let LogValue::Float(n) = v {
+        let v = parse_value(&LogValueType::Second, "123.4s");
+        if let LogValue::Second(n) = v {
             assert_eq!(n, 123.4);
         } else {
             unreachable!();
         }
-        let v = parse_value("second", "123.4h");
+        let v = parse_value(&LogValueType::Second, "123.4h");
         assert!(matches!(v, LogValue::None));
     }
 }
