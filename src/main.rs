@@ -5,6 +5,8 @@ mod log_record;
 mod operation;
 
 use std::env;
+use std::fs;
+use std::io;
 use std::cmp;
 use std::fs::File;
 use std::io::{ BufReader };
@@ -22,37 +24,63 @@ fn main() {
 
     // とりあえず固定のパラメータ
     let filename = &args[1];
-    let index = Index::new(Accessor::from_string("key", "httpRequest.requestMethod", LogValueType::String));
-    let fields :Vec<Field> = vec![
-        Field::new(Accessor::from_string("latency", "httpRequest.latency", LogValueType::Second), OpType::Average),
-        Field::new(Accessor::from_string("method", "httpRequest.requestMethod", LogValueType::String), OpType::Count)
-    ];
+    let result = build_table_def("./test.yaml");
+    if let Ok(def) = result {
+        let file = File::open(filename).unwrap();
+        let mut reader = BufReader::new(file);
+        let mut table: HashMap<String, TableRow> = HashMap::new();
 
-    let def = TableDef::new(index, fields);
+        // 一行ずつ読み込んで集計していく
+        loop {
+            let record = LogRecord::parse(&mut reader, def.key_accessor(), &def.field_accessor()[..]);
 
-    let file = File::open(filename).unwrap();
-    let mut reader = BufReader::new(file);
+            if let Ok(r) = record {
+                let key = r.key.to_string();
 
-    let mut table: HashMap<String, TableRow> = HashMap::new();
-
-    // 一行ずつ読み込んで集計していく
-    loop {
-        let record = LogRecord::parse(&mut reader, def.key_accessor(), &def.field_accessor()[..]);
-
-        if let Ok(r) = record {
-            let key = r.key.to_string();
-
-            if let Some(row) = table.get_mut(&key) {
-                 row.update(&r, &def.fields)
-             } else {
-                table.insert(r.key.to_string(), TableRow::new());
-             }
-        } else {
-            break;
+                if let Some(row) = table.get_mut(&key) {
+                    row.update(&r, &def.fields)
+                } else {
+                    table.insert(r.key.to_string(), TableRow::new());
+                }
+            } else {
+                break;
+            }
         }
-    }
 
-    display_as_markdown(&def, &table);
+        display_as_markdown(&def, &table);
+    };
+}
+
+fn build_table_def(filename: &str) -> Result<TableDef, io::Error> {
+    // Load config file.
+    let content = fs::read_to_string(filename)?;
+    let config = Config::parse(&content);
+
+    // build index.
+    let index = Index::new(Accessor::from_string(
+        &config.index.name, &config.index.accessor, LogValueType::String));
+
+    // build fields
+    let mut fields :Vec<Field> = vec![];
+    for qma_field in config.fields.iter() {
+        let dtype = match qma_field.dtype.as_str() {
+            "string" => LogValueType::String,
+            "integer" => LogValueType::Integer,
+            "float" => LogValueType::Float,
+            "second" => LogValueType::Second,
+            _ => LogValueType::None
+        };
+        let accessor = Accessor::from_string(&qma_field.name, &qma_field.accessor, dtype);
+
+        let op_type = match qma_field.operation.as_str() {
+            "average" => OpType::Average,
+            "count" => OpType::Count,
+            _ => OpType::Average
+        };
+        fields.push(Field::new(accessor, op_type));
+    }
+    let table_def = TableDef::new(index, fields);
+    Ok(table_def)
 }
 
 fn display_as_csv(def: &TableDef, table: &HashMap<String, TableRow>) {

@@ -1,0 +1,13 @@
+
+index:
+    name: method
+    accessor: httpRequest.requestMethod
+fields:
+  - name: latency
+    accessor: httpRequest.latency
+    dtype: second
+    operation: average
+  - name: method
+    accessor: httpRequest.requestMethod
+    dtype: string
+    operation: count

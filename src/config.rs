@@ -7,7 +7,7 @@ pub mod qma_config {
     #[derive(Serialize, Deserialize)]
     pub struct Config {
         pub index: Index,
-        pub fields: Option<Vec<Field>>
+        pub fields: Vec<Field>
     }
 
     #[derive(Serialize, Deserialize)]
@@ -56,16 +56,14 @@ mod test {
         ";
 
         let config = Config::parse(s);
-
+        // Check index.
         assert_eq!(&config.index.name, "key");
         assert_eq!(&config.index.accessor, "test.key");
-        if let Some(fields) = &config.fields {
-            assert_eq!(fields[0].name, "field1");
-            assert_eq!(fields[0].accessor, "test.value");
-            assert_eq!(fields[0].dtype, "string");
-            assert_eq!(fields[0].operation, "OpCount");
-        } else {
-            unreachable!();
-        }
+        // Check field
+
+        assert_eq!(&config.fields[0].name, "field1");
+        assert_eq!(&config.fields[0].accessor, "test.value");
+        assert_eq!(&config.fields[0].dtype, "string");
+        assert_eq!(&config.fields[0].operation, "OpCount");
     }
 }

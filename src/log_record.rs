@@ -103,7 +103,10 @@ impl fmt::Display for LogValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LogValue::String(s) => write!(f, "String({})", s ),
-            _ => write!(f, "")
+            LogValue::Integer(s) => write!(f, "Integer({})", s),
+            LogValue::Float(s) => write!(f, "Float({})", s),
+            LogValue::Second(s) => write!(f, "Second({}s)", s),
+            _ => write!(f, "None")
         }
     }
 }
@@ -124,7 +127,7 @@ impl LogValue {
                 format!("{:.4}sec", x)
             },
             LogValue::None => {
-                String::from("None")
+                String::from("-")
             }
         };
         s
