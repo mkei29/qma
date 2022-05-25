@@ -49,6 +49,10 @@ mod test {
              accessor: test.value 
              dtype: string
              operation: OpCount
+           - name: field2
+             accessor: test.value 
+             dtype: integer
+             operation: OpCount
         ";
 
         let config = Config::parse(s);
