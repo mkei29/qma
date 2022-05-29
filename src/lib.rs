@@ -10,14 +10,13 @@ use std::io;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::{ BufReader };
-use std::collections::{HashMap};
 use std::error::Error;
 
-pub use crate::aggregate::{ TableRow, TableDef, Index, Field };
-pub use crate::log_record::{ LogValueType, LogValue, LogRecord, Accessor };
+pub use crate::aggregate::{ Table, TableDef, Index, Field };
+pub use crate::log_record::{ LogValueType, LogValue, Accessor };
 pub use crate::config::qma_config:: { Config };
-pub use crate::operation::{OpType};
-pub use crate::visualize::{VisualizeType};
+pub use crate::operation::{ OpType };
+pub use crate::visualize::{ VisualizeType };
 
 
 pub fn run(config_path: &str, filename: Option<&str>) {
@@ -38,7 +37,7 @@ pub fn run(config_path: &str, filename: Option<&str>) {
     // initialize reader.
     // https://www.reddit.com/r/rust/comments/jv3q3e/how_to_select_between_reading_from_a_file_and/
     // https://github.com/reismannnr2/logrep/blob/master/src/main.rs
-    let mut reader :Box<dyn BufRead> = match filename {
+    let reader :Box<dyn BufRead> = match filename {
         Some(f) => {
             let file = File::open(f).unwrap();
             Box::new(BufReader::new(file))
@@ -50,33 +49,20 @@ pub fn run(config_path: &str, filename: Option<&str>) {
         }
     };
 
-    // とりあえず固定のパラメータ
+
     let result = build_table_def(&config);
     if let Ok(def) = result {
-        let mut table: HashMap<String, TableRow> = HashMap::new();
+        // let mut table: HashMap<String, TableRow> = HashMap::new();
+        let mut table = Table::new(def);
+        table.aggregate(reader);
+        table.sort();
 
-        // 一行ずつ読み込んで集計していく
-        loop {
-            let record = LogRecord::parse(&mut reader, def.key_accessor(), &def.field_accessor()[..]);
-
-            if let Ok(r) = record {
-                let key = r.key.to_string();
-
-                if let Some(row) = table.get_mut(&key) {
-                    row.update(&r, &def.fields)
-                } else {
-                    table.insert(r.key.to_string(), TableRow::new());
-                }
-            } else {
-                break;
-            }
-        }
         match output_format {
             VisualizeType::Csv => {
-                visualize::display_as_csv(&def, &table);
+                visualize::display_as_csv(&table.definition, &table.rows);
             },
             VisualizeType::Markdown => {
-                visualize::display_as_markdown(&def, &table);
+                visualize::display_as_markdown(&table.definition, &table.rows);
             }
         };
     };
