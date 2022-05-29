@@ -29,7 +29,7 @@ index:
     name: method  // Column name on output table.
     accessor: httpRequest.requestMethod  // Json accessor
 
-// fields: Columns on the 
+// fields: Columns list. See `Field setting details` section for details.
 fields:
   - name: latency  // Column table on output table.
     accessor: httpRequest.latency.  // Json accessor for target data.
@@ -42,4 +42,7 @@ fields:
 ``` 
 
 
-## Field setting details.
+## [1] Field setting details.
+
+```name```:  The field name to be displayed in the output table.
+```accessor```: 
