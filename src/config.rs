@@ -6,6 +6,7 @@ pub mod qma_config {
 
     #[derive(Serialize, Deserialize)]
     pub struct Config {
+        pub output_format: Option<String>,
         pub index: Index,
         pub fields: Vec<Field>
     }
@@ -41,6 +42,7 @@ mod test {
     #[test]
     fn check_config() {
         let s = "
+        output_format: csv
         index:
             name: key
             accessor: test.key
@@ -56,6 +58,11 @@ mod test {
         ";
 
         let config = Config::parse(s);
+        if let Some(x) = &config.output_format { 
+            assert_eq!(x, "csv");
+        } else {
+            unreachable!();
+        }
         // Check index.
         assert_eq!(&config.index.name, "key");
         assert_eq!(&config.index.accessor, "test.key");

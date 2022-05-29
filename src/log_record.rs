@@ -1,7 +1,6 @@
 
-use std::fs::File;
 use std::fmt;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead };
 use std::collections::{ HashMap };
 use serde_json::{Result, Value, };
 
@@ -40,7 +39,7 @@ impl LogRecord {
         }
     }
 
-    pub fn parse(reader :&mut BufReader<File>, index: &Accessor, fields :&[&Accessor]) -> Result<LogRecord> {
+    pub fn parse(reader :&mut Box<dyn BufRead>, index: &Accessor, fields :&[&Accessor]) -> Result<LogRecord> {
         // read line
         let mut buf = String::new();
         reader.read_line(&mut buf).expect("error");
