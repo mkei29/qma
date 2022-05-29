@@ -27,14 +27,14 @@ impl Accessor {
 }
 
 pub struct LogRecord {
-    pub key: String,
+    pub key: Option<String>,
     pub values: HashMap<String, LogValue>
 }
 
 impl LogRecord {
     pub fn new (key: &str) -> Self {
         Self {
-            key: String::from(key),
+            key: Some(String::from(key)),
             values: HashMap::new()
         }
     }
@@ -46,10 +46,7 @@ impl LogRecord {
         let v: Value = serde_json::from_str(&buf)?;
 
         // Read key and init log record.
-        let key = match get_value(&v, &index.accessor, 0) {
-            Some(x) => x,
-            None => "undefined".to_owned()
-        };
+        let key = get_value(&v, &index.accessor, 0); 
         let mut record = LogRecord {
             key, values: HashMap::new()
         };

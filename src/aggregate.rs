@@ -9,6 +9,7 @@ use std::io::{ BufRead };
 pub struct Table {
     pub definition :TableDef,
     pub rows :HashMap<String, TableRow>,
+    pub undefined: TableRow,
     pub order: Option<Vec<String>>
 }
 
@@ -18,6 +19,7 @@ impl Table {
         Self {
             definition,
             rows: HashMap::new(),
+            undefined: TableRow::new(),
             order: None,
         }
     }
@@ -28,13 +30,21 @@ impl Table {
             let record = LogRecord::parse(
                 &mut reader, self.definition.key_accessor(), &self.definition.field_accessor()[..]);
 
-            if let Ok(r) = record {
-                let key = r.key.to_string();
 
-                if let Some(row) = self.rows.get_mut(&key) {
-                    row.update(&r, &self.definition.fields)
+            if let Ok(r) = record {
+
+                if let Some(str_key) = &r.key {
+                    // If not str_key in HashMap, Insert new record.
+                    if !self.rows.contains_key(str_key) {
+                        self.rows.insert(str_key.to_string(), TableRow::new());
+                    }
+                    // Update record.
+                    if let Some(row) = self.rows.get_mut(str_key) {
+                        row.update(&r, &self.definition.fields)
+                    } 
                 } else {
-                    self.rows.insert(r.key.to_string(), TableRow::new());
+                    // When index value is not in json record.
+                    self.undefined.update(&r, &self.definition.fields);
                 }
             } else {
                 break;
@@ -95,9 +105,9 @@ impl TableRow {
     pub fn get(&self, field: &Field) -> LogValue {
         let v = self.values.get(field.name());
         if let Some(x) = v {
-           return x.value(); 
+           x.value()
         } else {
-            return LogValue::None;
+           LogValue::None
         }
     }
 
