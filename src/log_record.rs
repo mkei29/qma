@@ -65,7 +65,7 @@ impl LogRecord {
     }
 
     pub fn set(&mut self, key: &str, value: String, typ: &LogValueType) {
-        let v = parse_value(&typ, &value);
+        let v = parse_value(typ, &value);
         self.values.insert(key.to_string(), v);
     }
 

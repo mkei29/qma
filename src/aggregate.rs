@@ -9,6 +9,12 @@ pub struct TableRow {
     values: HashMap<String, Box<dyn Operation>>,
 }
 
+impl Default for TableRow {
+    fn default() -> Self {
+        TableRow::new()
+    }
+}
+
 impl TableRow {
     pub fn new() -> Self{
         Self {
@@ -20,7 +26,7 @@ impl TableRow {
         for f in fields {
             // Insert field if not exist.
             self.values.entry(f.name().to_string())
-                .or_insert(build_operation(&f.op_type));
+                .or_insert_with(|| build_operation(&f.op_type));
 
             let v = record.get(f.name());
             if let Some(op) = self.values.get_mut(f.name()) {
