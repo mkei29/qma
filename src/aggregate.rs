@@ -10,7 +10,7 @@ pub struct Table {
     pub definition :TableDef,
     pub rows :HashMap<String, TableRow>,
     pub undefined: TableRow,
-    pub order: Option<Vec<String>>
+    pub order: Vec<String>
 }
 
 impl Table {
@@ -20,7 +20,7 @@ impl Table {
             definition,
             rows: HashMap::new(),
             undefined: TableRow::new(),
-            order: None,
+            order: Vec::new(),
         }
     }
 
@@ -52,8 +52,8 @@ impl Table {
         }
     }
 
-    pub fn sort(&mut self) {
-
+    /// Sort rows according to table definition.
+    fn sort(&mut self) {
         if let Some(x) = &self.definition.order_by {
             // let mut order: Vec<(String, LogValue)> = vec![];
             // for (&key, row) in self.rows.iter() {
@@ -65,9 +65,22 @@ impl Table {
                 order.push(key.clone());
                 order.sort();
             }
-            self.order = Some(order);
+            self.order = order;
         }
     }
+
+    pub fn sorted_rows(&mut self) -> Vec<(&str, &TableRow)>{
+        self.sort();
+        let mut result :Vec<(&str, &TableRow)> = vec![];
+        for key in self.order.iter() {
+            if let Some(v) = self.rows.get(key) {
+                result.push((key, v));
+            }
+        }
+        result.push(("undefined", &self.undefined));
+        result
+    }
+
 }
 
 /// Struct which describe table row.
@@ -127,6 +140,7 @@ impl TableRow {
 }
 
 
+#[derive(Clone)]
 pub struct TableDef {
     pub index: Index,
     pub fields: Vec<Field>,
@@ -171,6 +185,7 @@ impl Field {
     }
 }
 
+#[derive(Clone)]
 pub struct Index {
     pub accessor: Accessor
 }

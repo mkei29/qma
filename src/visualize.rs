@@ -1,9 +1,7 @@
 
 
 use std::cmp;
-use std::collections::{HashMap};
-
-pub use crate::aggregate::{ TableRow, TableDef, Index, Field };
+pub use crate::aggregate::{ Table, TableRow, TableDef, Index, Field };
 pub use crate::log_record::{ LogValueType, LogValue, LogRecord, Accessor };
 
 
@@ -12,8 +10,9 @@ pub enum VisualizeType {
     Markdown
 }
 
-pub fn display_as_csv(def: &TableDef, table: &HashMap<String, TableRow>) {
+pub fn display_as_csv(table: &mut Table) {
     // # Display aggregated result as csv format.
+    let def = table.definition.clone();
     let mut header = String::from("");
     for  (i, &f) in def.field_accessor().iter().enumerate() {
         header += &f.name;
@@ -23,7 +22,7 @@ pub fn display_as_csv(def: &TableDef, table: &HashMap<String, TableRow>) {
     }
     println!("{}", &header);
 
-    for (key, row) in table.iter() {
+    for (key, row) in table.sorted_rows() {
         let mut row_str = String::from(key);
         row_str += ",";
 
@@ -41,10 +40,10 @@ pub fn display_as_csv(def: &TableDef, table: &HashMap<String, TableRow>) {
 }
 
 
-pub fn display_as_markdown(def: &TableDef, table: &HashMap<String, TableRow>) {
+pub fn display_as_markdown(table :&mut Table) {
     // # Display aggregated result as csv format.
-
     // count max chars of each fields;
+    let def = table.definition.clone();
     let mut col_width = vec![10; 1+def.fields.len()];
     col_width[0] = cmp::max(col_width[0], def.index.name().chars().count());
     for (i, &f) in def.field_accessor().iter().enumerate() {
@@ -71,7 +70,7 @@ pub fn display_as_markdown(def: &TableDef, table: &HashMap<String, TableRow>) {
     println!("{}", separator);
 
     // print table
-    for (key, row) in table.iter() {
+    for (key, row) in table.sorted_rows() {
         let width = col_width[0];
         let mut row_str = String::from("|");
         row_str += &format_string(key, width);

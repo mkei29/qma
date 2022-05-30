@@ -55,14 +55,13 @@ pub fn run(config_path: &str, filename: Option<&str>) {
         // let mut table: HashMap<String, TableRow> = HashMap::new();
         let mut table = Table::new(def);
         table.aggregate(reader);
-        table.sort();
 
         match output_format {
             VisualizeType::Csv => {
-                visualize::display_as_csv(&table.definition, &table.rows);
+                visualize::display_as_csv(&mut table);
             },
             VisualizeType::Markdown => {
-                visualize::display_as_markdown(&table.definition, &table.rows);
+                visualize::display_as_markdown(&mut table);
             }
         };
     };
