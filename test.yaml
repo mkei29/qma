@@ -1,13 +1,14 @@
-output_format: csv
+output_format: markdown
+order_by: latency
 index:
     name: method
     accessor: httpRequest.requestMethod
 fields:
+  - name: count
+    accessor: httpRequest.requestMethod
+    dtype: string
+    operation: count
   - name: latency
     accessor: httpRequest.latency
     dtype: second
     operation: average
-  - name: method
-    accessor: httpRequest.requestMethod
-    dtype: string
-    operation: count

@@ -55,10 +55,19 @@ impl Table {
     /// Sort rows according to table definition.
     fn sort(&mut self) {
         if let Some(x) = &self.definition.order_by {
-            // let mut order: Vec<(String, LogValue)> = vec![];
-            // for (&key, row) in self.rows.iter() {
-            //     horder.push((key, row.get("latent")));
-            // }
+
+            let mut tmp_order :Vec<(&str, LogValue)> = vec![];
+            for (key, row) in self.rows.iter() {
+                let v = row.get(x);
+                tmp_order.push((key, v));
+            }
+            tmp_order.sort_by(|a, b| { a.1.cmp(&b.1) });
+
+            let mut order: Vec<String> = vec![];
+            for (key, _) in tmp_order {
+                order.push(key.to_string());
+            }
+            self.order = order;
         } else {
             let mut order: Vec<String> = vec![];
             for (key, _) in self.rows.iter() {
@@ -148,8 +157,8 @@ pub struct TableDef {
 }
 
 impl TableDef {
-    pub fn new(index: Index, fields: Vec<Field>) -> Self {
-        Self { index, fields, order_by: None }
+    pub fn new(index: Index, fields: Vec<Field>, order_by: Option<Field>) -> Self {
+        Self { index, fields, order_by }
     }
 
     pub fn field_accessor(&self) -> Vec<&Accessor> {

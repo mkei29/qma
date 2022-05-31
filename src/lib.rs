@@ -8,9 +8,9 @@ mod visualize;
 use std::str;
 use std::io;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::{ BufReader };
+use std::io::{ BufRead, BufReader };
 use std::error::Error;
+use std::process;
 
 pub use crate::aggregate::{ Table, TableDef, Index, Field };
 pub use crate::log_record::{ LogValueType, LogValue, Accessor };
@@ -64,10 +64,13 @@ pub fn run(config_path: &str, filename: Option<&str>) {
                 visualize::display_as_markdown(&mut table);
             }
         };
-    };
+    } else {
+        eprintln!("Error: failed to parse config file.");
+        process::exit(1);
+    }
 }
 
-fn build_table_def(config: &Config) -> Result<TableDef, io::Error> {
+fn build_table_def(config: &Config) -> Result<TableDef, Box<dyn Error>> {
     // build index.
     let index = Index::new(Accessor::from_string(
         &config.index.name, &config.index.accessor, LogValueType::String));
@@ -91,7 +94,23 @@ fn build_table_def(config: &Config) -> Result<TableDef, io::Error> {
         };
         fields.push(Field::new(accessor, op_type));
     }
-    let table_def = TableDef::new(index, fields);
+
+    // find order by field.
+    let mut order_by: Option<Field> = None;
+    if let Some(o) = &config.order_by {
+        let mut ok = false;
+        for field in fields.iter() {
+            if &field.accessor.name == o {
+                order_by = Some(field.clone());
+                ok = true;
+                break;
+            }
+        }
+        if !ok {
+            return Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "Invalid order_by value")));
+        }
+    }
+    let table_def = TableDef::new(index, fields, order_by);
     Ok(table_def)
 }
 

@@ -1,6 +1,7 @@
 
 use std::fmt;
 use std::io::{BufRead };
+use std::cmp::{ Ordering, PartialOrd, Ord, PartialEq, Eq };
 use std::collections::{ HashMap };
 use serde_json::{Result, Value, };
 
@@ -103,6 +104,70 @@ impl fmt::Display for LogValue {
             LogValue::Float(s) => write!(f, "Float({})", s),
             LogValue::Second(s) => write!(f, "Second({}s)", s),
             _ => write!(f, "None")
+        }
+    }
+}
+
+
+impl PartialEq for LogValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::String(x), Self::String(y)) => {
+                x == y
+            }
+            (Self::Integer(x), Self::Integer(y)) => {
+                x == y
+            },
+            (Self::Float(x), Self::Float(y)) => {
+                (x - y) < 1e-10 
+            }
+            (Self::Second(x), Self::Second(y)) => {
+                (x - y) < 1e-10 
+            },
+            _ => false
+        }
+    }
+}
+
+impl Eq for LogValue {}
+
+impl PartialOrd for LogValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+     }
+}
+
+impl Ord for LogValue {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            // Compare with same type.
+            (Self::String(x), Self::String(y)) => {
+                x.cmp(y)
+            }
+            (Self::Integer(x), Self::Integer(y)) => {
+                x.cmp(y)
+            },
+            (Self::Float(x), Self::Float(y)) => {
+                match x.partial_cmp(y) {
+                    Some(x) => x,
+                    None => Ordering::Equal
+                }
+            }
+            (Self::Second(x), Self::Second(y)) => {
+                match x.partial_cmp(y) {
+                    Some(x) => x,
+                    None => Ordering::Equal
+                }
+            },
+            (Self::None, Self::None) => Ordering::Equal,
+
+            // Different type comparison.
+            (Self::String(_), _) => Ordering::Less,
+            (Self::Integer(_), _) => Ordering::Less,
+            (Self::Float(_), _) => Ordering::Less,
+            (Self::Second(_), _) => Ordering::Less,
+            (Self::None, _) => Ordering::Equal,
+
         }
     }
 }
