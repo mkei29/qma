@@ -61,7 +61,12 @@ impl Table {
                 let v = row.get(x);
                 tmp_order.push((key, v));
             }
-            tmp_order.sort_by(|a, b| { a.1.cmp(&b.1) });
+
+            if self.definition.ascending {
+                tmp_order.sort_by(|a, b| { a.1.cmp(&b.1) });
+            } else {
+                tmp_order.sort_by(|a, b| { b.1.cmp(&a.1) });
+            }
 
             let mut order: Vec<String> = vec![];
             for (key, _) in tmp_order {
@@ -153,12 +158,13 @@ impl TableRow {
 pub struct TableDef {
     pub index: Index,
     pub fields: Vec<Field>,
-    pub order_by: Option<Field>
+    pub order_by: Option<Field>,
+    pub ascending: bool, 
 }
 
 impl TableDef {
-    pub fn new(index: Index, fields: Vec<Field>, order_by: Option<Field>) -> Self {
-        Self { index, fields, order_by }
+    pub fn new(index: Index, fields: Vec<Field>, order_by: Option<Field>, ascending: bool) -> Self {
+        Self { index, fields, order_by, ascending}
     }
 
     pub fn field_accessor(&self) -> Vec<&Accessor> {

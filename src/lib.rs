@@ -110,7 +110,25 @@ fn build_table_def(config: &Config) -> Result<TableDef, Box<dyn Error>> {
             return Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "Invalid order_by value")));
         }
     }
-    let table_def = TableDef::new(index, fields, order_by);
+
+    // check order value.
+    let mut ascending = true;
+    if let Some(o) = &config.order {
+        let o = o.to_lowercase();
+        match o.to_lowercase().as_str() {
+            "asc" => {
+                ascending = true;
+            },
+            "desc" => {
+                ascending = false;
+            }
+            _ => {
+                return Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "Invalid order value")));
+            }
+        }
+
+    }
+    let table_def = TableDef::new(index, fields, order_by, ascending);
     Ok(table_def)
 }
 

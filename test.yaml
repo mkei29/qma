@@ -1,5 +1,7 @@
 output_format: markdown
-order_by: latency
+order_by: count
+order: desc
+
 index:
     name: method
     accessor: httpRequest.requestMethod

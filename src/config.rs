@@ -8,6 +8,7 @@ pub mod qma_config {
     pub struct Config {
         pub output_format: Option<String>,
         pub order_by: Option<String>,
+        pub order: Option<String>,
         pub index: Index,
         pub fields: Vec<Field>
     }
