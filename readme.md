@@ -8,6 +8,10 @@ Simple command line tool for aggeregate structured log.
 Before runnning qma, prepare the yaml file which describe table definition config like below.
 See here to detail.
 
+
+```yaml
+```
+
 ## Query from log file.
 ``` bash
 qma <CONFIG_PATH> <LOG_FILE_PATH>
@@ -19,11 +23,21 @@ SOME COMMAND | qma <CONFIG_PATH>
 ```
 
 # Installation
+You need either cargo to install qma.
 
-
-# Config file example.
-
+Using cargo
+```bash
+cargo install qma
 ```
+
+Using homebrew (only for OSX)
+
+# Config file details.
+
+```yaml
+// global setting
+order_by: count
+order_desc: asc //
 // index = group key settings
 index:
     name: method  // Column name on output table.

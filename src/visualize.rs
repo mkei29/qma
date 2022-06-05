@@ -64,7 +64,7 @@ pub fn display_as_markdown(table :&mut Table) {
     // print separator
     let mut separator = String::new();
     for w in col_width.iter() {
-        separator += &format!("|{}", "-".repeat(*w));
+        separator += &format!("|:{}", "-".repeat(*w-1));
     }
     separator += "|";
     println!("{}", separator);
